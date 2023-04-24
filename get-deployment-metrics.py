@@ -277,11 +277,10 @@ if __name__ == "__main__":
             args.date_filter, args.workflow_pattern
         )
     )
-    print("Avg Success Rate: {}".format(overall_average_success_rate))
-    print("Avg Failure Rate: {}".format(overall_average_failure_rate))
-    print("Avg Duration (ms): {:.0f}".format(overall_average_duration_ms))
+    print("Avg Success Rate: {}%".format(overall_average_success_rate))
+    print("Avg Failure Rate: {}%".format(overall_average_failure_rate))
     print(
-        "Avg Duration (MM:SS): {}".format(
-            get_mins_secs_str(overall_average_duration_ms)
+        "Avg Duration:: {:.0f} ms ({})".format(
+            overall_average_duration_ms, get_mins_secs_str(overall_average_duration_ms)
         )
     )
