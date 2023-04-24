@@ -57,6 +57,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--include-manual-runs",
         help="Include manual workflow runs in stats computations",
+        dest="include_manual_runs",
         action="store_true",
     )
     parser.add_argument(
@@ -161,7 +162,7 @@ if __name__ == "__main__":
 
                         # Manual runs are generally used for testing so exclude them by default
                         if workflow_run["event"] == "workflow_dispatch":
-                            if args.include - manual - runs:
+                            if args.include_manual_runs:
                                 logging.debug(
                                     "Workflow run {} was manually invoked and include-manual-runs is set - including in stats".format(
                                         job_id
