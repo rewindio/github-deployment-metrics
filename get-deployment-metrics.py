@@ -4,8 +4,9 @@ import os
 import logging
 import logging.handlers
 import argparse
-from agithub.GitHub import GitHub
 import fnmatch
+from agithub.GitHub import GitHub
+from dotenv import load_dotenv
 
 def get_mins_secs_str(duration_in_ms):
     duration_secs, duration_in_ms = divmod(duration_in_ms, 1000)
@@ -118,6 +119,8 @@ if __name__ == "__main__":
     ch.setFormatter(console_formatter)
     logger.addHandler(ch)
 
+    load_dotenv()
+    
     if "GITHUB_PAT" in os.environ:
         logger.debug("Found GITHUB_PAT in the envrionment")
         github_pat = os.getenv('GITHUB_PAT')
