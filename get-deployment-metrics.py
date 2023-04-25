@@ -24,6 +24,47 @@ def format_number(float_val):
     return str(return_val)
 
 
+def get_workflow_runs(org_name, repo_name, workflow_id, date_filter):
+    # Pagination does not work on this call
+    # https://github.com/mozilla/agithub/issues/76
+
+    runs = []
+    total_runs_returned = 0
+    page_to_get = 1
+    more_results = True
+
+    while more_results:
+        # repos/{org}}/{repo name}/actions/workflows/{workflow id}/runs
+        gh_status, workflow_runs = (
+            github_handle.repos[org_name][repo_name]
+            .actions.workflows[workflow_id]
+            .runs.get(created=date_filter, page=page_to_get)
+        )
+
+        runs = runs + workflow_runs["workflow_runs"]
+
+        total_runs = workflow_runs["total_count"]
+        runs_returned_in_this_page = len(workflow_runs["workflow_runs"])
+        total_runs_returned += runs_returned_in_this_page
+
+        logger.debug(
+            "total runs {} Runs this page {} Running count {}".format(
+                total_runs, runs_returned_in_this_page, total_runs_returned
+            )
+        )
+
+        if total_runs_returned < total_runs:
+            page_to_get += 1
+            logger.debug(
+                "We have more runs to get - now getting page {}".format(page_to_get)
+            )
+        else:
+            logger.debug("All runs retrieved")
+            more_results = False
+
+    return runs
+
+
 if __name__ == "__main__":
     summary_stats = dict()
 
@@ -83,7 +124,6 @@ if __name__ == "__main__":
 
     # Initialize connection to Github API
     github_handle = GitHub(token=args.github_pat, paginate=True)
-    # github_handle = GitHub(token=args.github_pat)
 
     # Get all the repos in the org
     # /orgs/{org}/repos
@@ -106,6 +146,7 @@ if __name__ == "__main__":
         ].actions.workflows.get()
 
         for workflow in workflow_data["workflows"]:
+            workflow_runs = []
             workflow_success_count = 0
             workflow_success_rate = 100
 
@@ -131,14 +172,11 @@ if __name__ == "__main__":
                 )
 
                 # We have a matching workflow - get the runs for it in our timeframe
-                # repos/{org}}/{repo name}/actions/workflows/{workflow id}/runs
-                gh_status, workflow_runs = (
-                    github_handle.repos[args.org_name][repo_name]
-                    .actions.workflows[workflow_id]
-                    .runs.get(created=args.date_filter)
+                workflow_runs = get_workflow_runs(
+                    args.org_name, repo_name, workflow_id, args.date_filter
                 )
 
-                total_workflow_runs = len(workflow_runs["workflow_runs"])
+                total_workflow_runs = len(workflow_runs)
 
                 logging.debug(
                     "Found {} workflow runs for {}".format(
@@ -156,7 +194,7 @@ if __name__ == "__main__":
                     if repo_name not in summary_stats:
                         summary_stats[repo_name] = dict()
 
-                    for workflow_run in workflow_runs["workflow_runs"]:
+                    for workflow_run in workflow_runs:
                         workflow_status = workflow_run["conclusion"]
                         job_id = workflow_run["id"]
 
