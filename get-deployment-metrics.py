@@ -8,6 +8,7 @@ import fnmatch
 from agithub.GitHub import GitHub
 from dotenv import load_dotenv
 
+
 def get_mins_secs_str(duration_in_ms):
     duration_secs, duration_in_ms = divmod(duration_in_ms, 1000)
     duration_mins, duration_secs = divmod(duration_secs, 60)
@@ -120,10 +121,10 @@ if __name__ == "__main__":
     logger.addHandler(ch)
 
     load_dotenv()
-    
+
     if "GITHUB_PAT" in os.environ:
         logger.debug("Found GITHUB_PAT in the envrionment")
-        github_pat = os.getenv('GITHUB_PAT')
+        github_pat = os.getenv("GITHUB_PAT")
     else:
         logger.error("Missing GITHUB_PAT environment variable - unable to continue")
         exit(1)
