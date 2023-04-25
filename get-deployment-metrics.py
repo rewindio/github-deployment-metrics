@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
+import os
 import logging
 import logging.handlers
 import argparse
 from agithub.GitHub import GitHub
 import fnmatch
-from pprint import pformat, pprint
-
 
 def get_mins_secs_str(duration_in_ms):
     duration_secs, duration_in_ms = divmod(duration_in_ms, 1000)
@@ -84,9 +83,6 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "--github-pat", help="Github access token", dest="github_pat", required=True
-    )
-    parser.add_argument(
         "--date-filter",
         help="Github start/end date filter",
         dest="date_filter",
@@ -122,8 +118,15 @@ if __name__ == "__main__":
     ch.setFormatter(console_formatter)
     logger.addHandler(ch)
 
+    if "GITHUB_PAT" in os.environ:
+        logger.debug("Found GITHUB_PAT in the envrionment")
+        github_pat = os.getenv('GITHUB_PAT')
+    else:
+        logger.error("Missing GITHUB_PAT environment variable - unable to continue")
+        exit(1)
+
     # Initialize connection to Github API
-    github_handle = GitHub(token=args.github_pat, paginate=True)
+    github_handle = GitHub(token=github_pat, paginate=True)
 
     # Get all the repos in the org
     # /orgs/{org}/repos

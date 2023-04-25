@@ -11,6 +11,7 @@ pip3 install -r requirements.txt
 ## Prerequistes
 
 - A Github Personal Access Token (PAT) that has repo and admin:org scopes
+- The Github PAT set in an environment variable named `GITHUB_PAT` OR contained in a `.env` file
 
 ## Usage
 
@@ -25,8 +26,6 @@ options:
   --org-name ORG_NAME   Github organization name
   --deploy-workflow-pattern WORKFLOW_PATTERN
                         Github actions deploy workflows
-  --github-pat GITHUB_PAT
-                        Github access token
   --date-filter DATE_FILTER
                         Github start/end date filter
   --detailed            Show detailed output for each repo
@@ -38,7 +37,7 @@ options:
 ### Example Execution
 
 ```bash
-./get-deployment-metrics.py --org-name acme --deploy-workflow-pattern '*Deploy*' --github-pat 123456789 --date-filter '2023-03-01..2023-03-31' --detailed
+./get-deployment-metrics.py --org-name acme --deploy-workflow-pattern '*Deploy*' --date-filter '2023-03-01..2023-03-31' --detailed
 ```
 
 ### Notes
