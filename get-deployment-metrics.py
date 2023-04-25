@@ -80,13 +80,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--deploy-workflow-pattern",
-        help="Github actions deploy workflows",
+        help="Track stats for all jobs run matching this workflow name pattern (eg. *Deploy*)",
         dest="workflow_pattern",
         required=True,
     )
     parser.add_argument(
         "--date-filter",
-        help="Github start/end date filter",
+        help="Github start/end date filter (eg. 2023-03-01..2023-03-31)",
         dest="date_filter",
         required=True,
     )
@@ -310,11 +310,6 @@ if __name__ == "__main__":
                 "avg_duration_ms"
             ]
 
-    # Finally grab the overall averages
-    overall_average_success_rate = format_number(overall_success_sum / workflow_count)
-    overall_average_failure_rate = format_number(overall_failure_sum / workflow_count)
-    overall_average_duration_ms = overall_duration_ms_sum / workflow_count
-
     print("\n")
     print("-------- SUMMARY ---------")
     print(
@@ -322,10 +317,24 @@ if __name__ == "__main__":
             args.date_filter, args.workflow_pattern
         )
     )
-    print("Avg Success Rate: {}%".format(overall_average_success_rate))
-    print("Avg Failure Rate: {}%".format(overall_average_failure_rate))
-    print(
-        "Avg Duration:: {:.0f} ms ({})".format(
-            overall_average_duration_ms, get_mins_secs_str(overall_average_duration_ms)
+
+    if workflow_count != 0:
+        # Finally grab the overall averages
+        overall_average_success_rate = format_number(
+            overall_success_sum / workflow_count
         )
-    )
+        overall_average_failure_rate = format_number(
+            overall_failure_sum / workflow_count
+        )
+        overall_average_duration_ms = overall_duration_ms_sum / workflow_count
+
+        print("Avg Success Rate: {}%".format(overall_average_success_rate))
+        print("Avg Failure Rate: {}%".format(overall_average_failure_rate))
+        print(
+            "Avg Duration:: {:.0f} ms ({})".format(
+                overall_average_duration_ms,
+                get_mins_secs_str(overall_average_duration_ms),
+            )
+        )
+    else:
+        print("No workflows found matching the filter and/or date critiera")

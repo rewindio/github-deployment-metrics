@@ -16,8 +16,7 @@ pip3 install -r requirements.txt
 ## Usage
 
 ```bash
-usage: get-deployment-metrics.py [-h] --org-name ORG_NAME --deploy-workflow-pattern WORKFLOW_PATTERN --github-pat GITHUB_PAT --date-filter DATE_FILTER
-                                 [--detailed] [--include_manual_runs] [--verbose]
+usage: get-deployment-metrics.py [-h] --org-name ORG_NAME --deploy-workflow-pattern WORKFLOW_PATTERN --date-filter DATE_FILTER [--detailed] [--include-manual-runs] [--verbose]
 
 Gather deployment metrics from Github actions
 
@@ -25,9 +24,9 @@ options:
   -h, --help            show this help message and exit
   --org-name ORG_NAME   Github organization name
   --deploy-workflow-pattern WORKFLOW_PATTERN
-                        Github actions deploy workflows
+                        Track stats for all jobs run matching this workflow name pattern (eg. *Deploy*)
   --date-filter DATE_FILTER
-                        Github start/end date filter
+                        Github start/end date filter (eg. 2023-03-01..2023-03-31)
   --detailed            Show detailed output for each repo
   --include-manual-runs
                         Include manual workflow runs in stats computations
