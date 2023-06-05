@@ -296,6 +296,7 @@ if __name__ == "__main__":
     overall_success_sum = 0
     overall_failure_sum = 0
     overall_duration_ms_sum = 0
+    overall_run_count = 0
 
     for stat_repo in summary_stats:
         for stat_workflow in summary_stats[stat_repo]:
@@ -309,6 +310,7 @@ if __name__ == "__main__":
             overall_duration_ms_sum += summary_stats[stat_repo][stat_workflow][
                 "avg_duration_ms"
             ]
+            overall_run_count += summary_stats[stat_repo][stat_workflow]["total_runs"]
 
     print("\n")
     print("-------- SUMMARY ---------")
@@ -328,6 +330,7 @@ if __name__ == "__main__":
         )
         overall_average_duration_ms = overall_duration_ms_sum / workflow_count
 
+        print("Total Runs: {}".format(overall_run_count))
         print("Avg Success Rate: {}%".format(overall_average_success_rate))
         print("Avg Failure Rate: {}%".format(overall_average_failure_rate))
         print(
