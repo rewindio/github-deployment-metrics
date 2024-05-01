@@ -153,12 +153,16 @@ if __name__ == "__main__":
         ].actions.workflows.get()
 
         for workflow in workflow_data["workflows"]:
+            # Possible states: success, failure, cancelled, skipped, timed_out, action_required, neutral
+
             workflow_runs = []
             workflow_success_count = 0
             workflow_success_rate = 100
+            workflow_success_states = set(['success','neutral','cancelled','skipped','action_required'])
 
             workflow_fail_count = 0
             workflow_failure_rate = 0
+            workflow_failure_states = set(['failure','timed_out'])
 
             workflow_avg_duration = 0
             workflow_total_duration = 0
@@ -229,10 +233,9 @@ if __name__ == "__main__":
                         )
 
                         # Get the success/fail status of these runs
-                        if workflow_status == "success":
+                        if workflow_status in workflow_success_states:
                             workflow_success_count += 1
-                        else:
-                            # there are multiple failure status values. Assume non-success == failure
+                        elif workflow_status in workflow_failure_states:
                             workflow_fail_count += 1
 
                         # How long did this run run for
