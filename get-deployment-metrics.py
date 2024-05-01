@@ -158,11 +158,13 @@ if __name__ == "__main__":
             workflow_runs = []
             workflow_success_count = 0
             workflow_success_rate = 100
-            workflow_success_states = set(['success','neutral','cancelled','skipped','action_required'])
+            workflow_success_states = set(
+                ["success", "neutral", "cancelled", "skipped", "action_required"]
+            )
 
             workflow_fail_count = 0
             workflow_failure_rate = 0
-            workflow_failure_states = set(['failure','timed_out'])
+            workflow_failure_states = set(["failure", "timed_out"])
 
             workflow_avg_duration = 0
             workflow_total_duration = 0
