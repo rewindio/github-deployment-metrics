@@ -266,7 +266,7 @@ if __name__ == "__main__":
                     # This causes a dividie by zero error
                     if total_workflow_runs == 0:
                         workflow_success_rate = 0
-                        workflow_failure_rate = 0 
+                        workflow_failure_rate = 0
                         workflow_avg_duration = 0
                     else:
                         # Assemble our stats record for this workflow in this repo
