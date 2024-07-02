@@ -262,16 +262,23 @@ if __name__ == "__main__":
                             )
                         )
 
-                    # Assemble our stats record for this workflow in this repo
-                    workflow_success_rate = format_number(
-                        100.0 * workflow_success_count / total_workflow_runs
-                    )
-                    workflow_failure_rate = format_number(
-                        100.0 * workflow_fail_count / total_workflow_runs
-                    )
-                    workflow_avg_duration = float(workflow_total_duration) / float(
-                        total_workflow_runs
-                    )
+                    # Because we are only counting non-manual runs, we could have 0 actual "runs"
+                    # This causes a dividie by zero error
+                    if total_workflow_runs == 0:
+                        workflow_success_rate = 0
+                        workflow_failure_rate = 0
+                        workflow_avg_duration = 0
+                    else:
+                        # Assemble our stats record for this workflow in this repo
+                        workflow_success_rate = format_number(
+                            100.0 * workflow_success_count / total_workflow_runs
+                        )
+                        workflow_failure_rate = format_number(
+                            100.0 * workflow_fail_count / total_workflow_runs
+                        )
+                        workflow_avg_duration = float(workflow_total_duration) / float(
+                            total_workflow_runs
+                        )
 
                     stat = {
                         "total_runs": total_workflow_runs,
