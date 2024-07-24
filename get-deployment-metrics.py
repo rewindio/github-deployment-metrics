@@ -315,9 +315,11 @@ if __name__ == "__main__":
                             )
                         )
                         print("\t\tDeployers:")
-                        sorted_deployers = sorted(deployers.items(), key=lambda item: item[1], reverse=True)
+                        sorted_deployers = sorted(
+                            deployers.items(), key=lambda item: item[1], reverse=True
+                        )
                         for deploy_user, deploy_count in sorted_deployers:
-                            print("\t\t\t{}:{}".format(deploy_user,deploy_count))   
+                            print("\t\t\t{}:{}".format(deploy_user, deploy_count))
 
     # now we can process the stats we have gathered and get the overall averages
     workflow_count = 0
@@ -342,14 +344,20 @@ if __name__ == "__main__":
             overall_run_count += summary_stats[stat_repo][stat_workflow]["total_runs"]
 
             # We do not want to include branch deploys in the per-user summary
-            if fnmatch.fnmatch(stat_workflow, 'Branch*'):
-                logging.debug("Workflow {} is a branch deploy (manual) - skipping deployer stats".format(stat_workflow))
+            if fnmatch.fnmatch(stat_workflow, "Branch*"):
+                logging.debug(
+                    "Workflow {} is a branch deploy (manual) - skipping deployer stats".format(
+                        stat_workflow
+                    )
+                )
             else:
-                for deploy_user, deploy_count in summary_stats[stat_repo][stat_workflow]["actors"].items():
-                  if deploy_user in overall_deployers:
-                    overall_deployers[deploy_user] += deploy_count
-                  else:
-                    overall_deployers[deploy_user] = deploy_count
+                for deploy_user, deploy_count in summary_stats[stat_repo][
+                    stat_workflow
+                ]["actors"].items():
+                    if deploy_user in overall_deployers:
+                        overall_deployers[deploy_user] += deploy_count
+                    else:
+                        overall_deployers[deploy_user] = deploy_count
 
     print("\n")
     print("-------- SUMMARY ---------")
@@ -379,8 +387,10 @@ if __name__ == "__main__":
             )
         )
         print("Non 'Branch Deploy' Deployers:")
-        sorted_overall_deployers = sorted(overall_deployers.items(), key=lambda item: item[1], reverse=True)
+        sorted_overall_deployers = sorted(
+            overall_deployers.items(), key=lambda item: item[1], reverse=True
+        )
         for deploy_user, deploy_count in sorted_overall_deployers:
-            print("\t{}:{}".format(deploy_user,deploy_count))    
+            print("\t{}:{}".format(deploy_user, deploy_count))
     else:
         print("No workflows found matching the filter and/or date critiera")
