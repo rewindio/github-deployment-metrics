@@ -155,6 +155,7 @@ if __name__ == "__main__":
         for workflow in workflow_data["workflows"]:
             # Possible states: success, failure, cancelled, skipped, timed_out, action_required, neutral
 
+            deployers = dict()
             workflow_runs = []
             workflow_success_count = 0
             workflow_success_rate = 100
@@ -210,6 +211,13 @@ if __name__ == "__main__":
                     for workflow_run in workflow_runs:
                         workflow_status = workflow_run["conclusion"]
                         job_id = workflow_run["id"]
+                        actor = workflow_run["triggering_actor"]["login"]
+
+                        logging.debug("Workflow run was triggered by {}".format(actor))
+
+                        # Initialize the actors list
+                        if actor not in deployers:
+                            deployers[actor] = 0
 
                         # Manual runs are generally used for testing so exclude them by default
                         if workflow_run["event"] == "workflow_dispatch":
@@ -239,6 +247,9 @@ if __name__ == "__main__":
                             workflow_success_count += 1
                         elif workflow_status in workflow_failure_states:
                             workflow_fail_count += 1
+
+                        # No matter success or fail, the current actor triggered a deploy
+                        deployers[actor] += 1
 
                         # How long did this run run for
                         # repos/{org}/{repo}/actions/runs/{run id}/timing
@@ -287,6 +298,7 @@ if __name__ == "__main__":
                         "success_rate": workflow_success_rate,
                         "fail_rate": workflow_failure_rate,
                         "avg_duration_ms": workflow_avg_duration,
+                        "actors": deployers,
                     }
                     summary_stats[repo_name][workflow_summary_name] = stat
 
@@ -302,6 +314,10 @@ if __name__ == "__main__":
                                 get_mins_secs_str(workflow_avg_duration),
                             )
                         )
+                        print("\t\tDeployers:")
+                        sorted_deployers = sorted(deployers.items(), key=lambda item: item[1], reverse=True)
+                        for deploy_user, deploy_count in sorted_deployers:
+                            print("\t\t\t{}:{}".format(deploy_user,deploy_count))   
 
     # now we can process the stats we have gathered and get the overall averages
     workflow_count = 0
@@ -309,6 +325,7 @@ if __name__ == "__main__":
     overall_failure_sum = 0
     overall_duration_ms_sum = 0
     overall_run_count = 0
+    overall_deployers = dict()
 
     for stat_repo in summary_stats:
         for stat_workflow in summary_stats[stat_repo]:
@@ -323,6 +340,16 @@ if __name__ == "__main__":
                 "avg_duration_ms"
             ]
             overall_run_count += summary_stats[stat_repo][stat_workflow]["total_runs"]
+
+            # We do not want to include branch deploys in the per-user summary
+            if fnmatch.fnmatch(stat_workflow, 'Branch*'):
+                logging.debug("Workflow {} is a branch deploy (manual) - skipping deployer stats".format(stat_workflow))
+            else:
+                for deploy_user, deploy_count in summary_stats[stat_repo][stat_workflow]["actors"].items():
+                  if deploy_user in overall_deployers:
+                    overall_deployers[deploy_user] += deploy_count
+                  else:
+                    overall_deployers[deploy_user] = deploy_count
 
     print("\n")
     print("-------- SUMMARY ---------")
@@ -351,5 +378,9 @@ if __name__ == "__main__":
                 get_mins_secs_str(overall_average_duration_ms),
             )
         )
+        print("Non 'Branch Deploy' Deployers:")
+        sorted_overall_deployers = sorted(overall_deployers.items(), key=lambda item: item[1], reverse=True)
+        for deploy_user, deploy_count in sorted_overall_deployers:
+            print("\t{}:{}".format(deploy_user,deploy_count))    
     else:
         print("No workflows found matching the filter and/or date critiera")
