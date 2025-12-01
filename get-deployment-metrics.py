@@ -7,8 +7,6 @@ import argparse
 import fnmatch
 from agithub.GitHub import GitHub
 from dotenv import load_dotenv
-from pprint import pprint
-
 
 def get_mins_secs_str(duration_in_ms):
     duration_secs, duration_in_ms = divmod(duration_in_ms, 1000)
@@ -210,8 +208,6 @@ if __name__ == "__main__":
                         summary_stats[repo_name] = dict()
 
                     for workflow_run in workflow_runs:
-                        #logging.debug("NEW WORKFLOW RUN FOUND...")
-                        #pprint(workflow_run)
                         workflow_status = workflow_run["conclusion"]
                         job_id = workflow_run["id"]
                         if workflow_run["triggering_actor"]:
