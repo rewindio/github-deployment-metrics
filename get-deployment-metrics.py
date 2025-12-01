@@ -8,6 +8,7 @@ import fnmatch
 from agithub.GitHub import GitHub
 from dotenv import load_dotenv
 
+
 def get_mins_secs_str(duration_in_ms):
     duration_secs, duration_in_ms = divmod(duration_in_ms, 1000)
     duration_mins, duration_secs = divmod(duration_secs, 60)
