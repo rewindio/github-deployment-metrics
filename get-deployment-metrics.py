@@ -211,7 +211,10 @@ if __name__ == "__main__":
                     for workflow_run in workflow_runs:
                         workflow_status = workflow_run["conclusion"]
                         job_id = workflow_run["id"]
-                        actor = workflow_run["triggering_actor"]["login"]
+                        if workflow_run["triggering_actor"]:
+                            actor = workflow_run["triggering_actor"]["login"]
+                        else:
+                            actor = "User is no longer in the org"
 
                         logging.debug("Workflow run was triggered by {}".format(actor))
 
