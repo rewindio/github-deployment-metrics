@@ -1,12 +1,30 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import logging
 import logging.handlers
 import argparse
 import fnmatch
+import time
 from agithub.GitHub import GitHub
 from dotenv import load_dotenv
+
+
+def make_verbose_rate_limit_handler(client):
+    """Patch a GitHub client to print rate limit messages."""
+
+    def verbose_sleep():
+        seconds = client.ratelimit_seconds_remaining()
+        reset_time = time.strftime("%H:%M:%S", time.localtime(time.time() + seconds))
+        print(
+            f"Rate limited by GitHub API. Sleeping for {seconds} seconds until {reset_time}...",
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(seconds)
+
+    client.sleep_until_more_ratelimit = verbose_sleep
 
 
 def get_mins_secs_str(duration_in_ms):
@@ -25,6 +43,27 @@ def format_number(float_val):
     return str(return_val)
 
 
+def is_rate_limited(status, response):
+    """Check if a GitHub API response indicates rate limiting."""
+    if status == 429:
+        return True
+    if status == 403:
+        message = response.get("message", "") if isinstance(response, dict) else ""
+        if "rate limit" in message.lower():
+            return True
+    return False
+
+
+# Global list to collect output for file writing
+output_lines = []
+
+
+def output(message=""):
+    """Print to stdout and collect for file output."""
+    print(message)
+    output_lines.append(message)
+
+
 def get_workflow_runs(org_name, repo_name, workflow_id, date_filter):
     # Pagination does not work on this call
     # https://github.com/mozilla/agithub/issues/76
@@ -41,6 +80,34 @@ def get_workflow_runs(org_name, repo_name, workflow_id, date_filter):
             .actions.workflows[workflow_id]
             .runs.get(created=date_filter, page=page_to_get)
         )
+
+        # Check for rate limiting
+        if is_rate_limited(gh_status, workflow_runs):
+            print(
+                "WARNING: GitHub API rate limit exceeded while fetching workflow runs for {}/{}. Results may be incomplete.".format(
+                    org_name, repo_name
+                )
+            )
+            logger.warning("Rate limit exceeded - stopping pagination")
+            break
+
+        # Check for API errors (non-2xx status codes)
+        if gh_status < 200 or gh_status >= 300:
+            logger.warning(
+                "GitHub API returned status {} for workflow {} in {}/{}: {}".format(
+                    gh_status, workflow_id, org_name, repo_name, workflow_runs
+                )
+            )
+            break
+
+        # Handle unexpected response format
+        if "workflow_runs" not in workflow_runs:
+            logger.warning(
+                "Unexpected API response for workflow {} in {}/{}: {}".format(
+                    workflow_id, org_name, repo_name, workflow_runs
+                )
+            )
+            break
 
         runs = runs + workflow_runs["workflow_runs"]
 
@@ -102,6 +169,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose", help="Turn on DEBUG logging", action="store_true", required=False
     )
+    parser.add_argument(
+        "--output-file",
+        help="Write results to the specified file",
+        dest="output_file",
+        required=False,
+    )
 
     args = parser.parse_args()
 
@@ -129,12 +202,19 @@ if __name__ == "__main__":
         logger.error("Missing GITHUB_PAT environment variable - unable to continue")
         exit(1)
 
-    # Initialize connection to Github API
+    # Initialize connection to Github API with verbose rate limit handling
     github_handle = GitHub(token=github_pat, paginate=True)
+    make_verbose_rate_limit_handler(github_handle.client)
 
     # Get all the repos in the org
     # /orgs/{org}/repos
     gh_status, repo_data = github_handle.orgs[args.org_name].repos.get()
+
+    if is_rate_limited(gh_status, repo_data):
+        print(
+            "ERROR: GitHub API rate limit exceeded while fetching repos. Please wait and try again."
+        )
+        exit(1)
 
     for repo in repo_data:
         repo_name = repo["name"]
@@ -151,6 +231,22 @@ if __name__ == "__main__":
         gh_status, workflow_data = github_handle.repos[args.org_name][
             repo_name
         ].actions.workflows.get()
+
+        if is_rate_limited(gh_status, workflow_data):
+            print(
+                "WARNING: GitHub API rate limit exceeded while fetching workflows for {}. Results may be incomplete.".format(
+                    repo_name
+                )
+            )
+            continue
+
+        if "workflows" not in workflow_data:
+            logger.warning(
+                "Unexpected API response for workflows in {}: {}".format(
+                    repo_name, workflow_data
+                )
+            )
+            continue
 
         for workflow in workflow_data["workflows"]:
             # Possible states: success, failure, cancelled, skipped, timed_out, action_required, neutral
@@ -201,7 +297,7 @@ if __name__ == "__main__":
                 # Were there any runs for this workflow in this time period?
                 if total_workflow_runs > 0:
                     if args.detailed and not repo_printed:
-                        print("{}".format(repo_name))
+                        output("{}".format(repo_name))
                         repo_printed = True
 
                     # Initialize our summary stats dict
@@ -262,6 +358,12 @@ if __name__ == "__main__":
                             .timing.get()
                         )
 
+                        if is_rate_limited(gh_status, workflow_durations):
+                            print(
+                                "WARNING: GitHub API rate limit exceeded while fetching timing data. Results may be incomplete."
+                            )
+                            break
+
                         # Some jobs may not have run at all
                         if "run_duration_ms" in workflow_durations:
                             job_duration = workflow_durations["run_duration_ms"]
@@ -306,23 +408,23 @@ if __name__ == "__main__":
                     summary_stats[repo_name][workflow_summary_name] = stat
 
                     if args.detailed:
-                        print("\t{}:".format(workflow_name))
-                        print("\t\tRuns: {}".format(total_workflow_runs))
-                        print("\t\tSuccessful: {}".format(workflow_success_count))
-                        print("\t\tFailed: {}".format(workflow_fail_count))
-                        print("\t\tSuccess Rate: {}%".format(workflow_success_rate))
-                        print(
+                        output("\t{}:".format(workflow_name))
+                        output("\t\tRuns: {}".format(total_workflow_runs))
+                        output("\t\tSuccessful: {}".format(workflow_success_count))
+                        output("\t\tFailed: {}".format(workflow_fail_count))
+                        output("\t\tSuccess Rate: {}%".format(workflow_success_rate))
+                        output(
                             "\t\tAvg Duration:: {:.0f} ms ({})".format(
                                 workflow_avg_duration,
                                 get_mins_secs_str(workflow_avg_duration),
                             )
                         )
-                        print("\t\tDeployers:")
+                        output("\t\tDeployers:")
                         sorted_deployers = sorted(
                             deployers.items(), key=lambda item: item[1], reverse=True
                         )
                         for deploy_user, deploy_count in sorted_deployers:
-                            print("\t\t\t{}:{}".format(deploy_user, deploy_count))
+                            output("\t\t\t{}:{}".format(deploy_user, deploy_count))
 
     # now we can process the stats we have gathered and get the overall averages
     workflow_count = 0
@@ -362,9 +464,9 @@ if __name__ == "__main__":
                     else:
                         overall_deployers[deploy_user] = deploy_count
 
-    print("\n")
-    print("-------- SUMMARY ---------")
-    print(
+    output("\n")
+    output("-------- SUMMARY ---------")
+    output(
         "For the period {} with workflows matching {}".format(
             args.date_filter, args.workflow_pattern
         )
@@ -380,20 +482,26 @@ if __name__ == "__main__":
         )
         overall_average_duration_ms = overall_duration_ms_sum / workflow_count
 
-        print("Total Runs: {}".format(overall_run_count))
-        print("Avg Success Rate: {}%".format(overall_average_success_rate))
-        print("Avg Failure Rate: {}%".format(overall_average_failure_rate))
-        print(
+        output("Total Runs: {}".format(overall_run_count))
+        output("Avg Success Rate: {}%".format(overall_average_success_rate))
+        output("Avg Failure Rate: {}%".format(overall_average_failure_rate))
+        output(
             "Avg Duration:: {:.0f} ms ({})".format(
                 overall_average_duration_ms,
                 get_mins_secs_str(overall_average_duration_ms),
             )
         )
-        print("Non 'Branch Deploy' Deployers:")
+        output("Non 'Branch Deploy' Deployers:")
         sorted_overall_deployers = sorted(
             overall_deployers.items(), key=lambda item: item[1], reverse=True
         )
         for deploy_user, deploy_count in sorted_overall_deployers:
-            print("\t{}:{}".format(deploy_user, deploy_count))
+            output("\t{}:{}".format(deploy_user, deploy_count))
     else:
-        print("No workflows found matching the filter and/or date critiera")
+        output("No workflows found matching the filter and/or date criteria")
+
+    # Write results to file if requested
+    if args.output_file:
+        with open(args.output_file, "w") as f:
+            f.write("\n".join(output_lines))
+        print("\nResults written to {}".format(args.output_file))
