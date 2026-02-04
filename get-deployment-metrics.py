@@ -17,9 +17,7 @@ def make_verbose_rate_limit_handler(client):
 
     def verbose_sleep():
         seconds = client.ratelimit_seconds_remaining()
-        reset_time = time.strftime(
-            "%H:%M:%S", time.localtime(time.time() + seconds)
-        )
+        reset_time = time.strftime("%H:%M:%S", time.localtime(time.time() + seconds))
         print(
             f"Rate limited by GitHub API. Sleeping for {seconds} seconds until {reset_time}...",
             file=sys.stderr,
