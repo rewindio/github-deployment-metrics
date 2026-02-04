@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 
 def make_verbose_rate_limit_handler(client):
     """Patch a GitHub client to print rate limit messages."""
-    original_sleep = client.sleep_until_more_ratelimit
 
     def verbose_sleep():
         seconds = client.ratelimit_seconds_remaining()
@@ -46,6 +45,8 @@ def format_number(float_val):
 
 def is_rate_limited(status, response):
     """Check if a GitHub API response indicates rate limiting."""
+    if status == 429:
+        return True
     if status == 403:
         message = response.get("message", "") if isinstance(response, dict) else ""
         if "rate limit" in message.lower():
@@ -497,7 +498,7 @@ if __name__ == "__main__":
         for deploy_user, deploy_count in sorted_overall_deployers:
             output("\t{}:{}".format(deploy_user, deploy_count))
     else:
-        output("No workflows found matching the filter and/or date critiera")
+        output("No workflows found matching the filter and/or date criteria")
 
     # Write results to file if requested
     if args.output_file:
