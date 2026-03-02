@@ -54,6 +54,37 @@ def is_rate_limited(status, response):
     return False
 
 
+TRANSIENT_STATUS_CODES = {502, 503, 504}
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 2  # seconds
+
+
+def api_call_with_retry(api_func, description="API call"):
+    """Call an API function with retries for transient errors (502, 503, 504).
+
+    api_func should be a callable that returns (status, response).
+    """
+    for attempt in range(MAX_RETRIES + 1):
+        status, response = api_func()
+        if status not in TRANSIENT_STATUS_CODES:
+            return status, response
+        if attempt < MAX_RETRIES:
+            wait = RETRY_BACKOFF_BASE ** (attempt + 1)
+            logging.warning(
+                "Transient HTTP {} for {} — retrying in {}s (attempt {}/{})".format(
+                    status, description, wait, attempt + 1, MAX_RETRIES
+                )
+            )
+            time.sleep(wait)
+        else:
+            logging.warning(
+                "Transient HTTP {} for {} — giving up after {} retries".format(
+                    status, description, MAX_RETRIES
+                )
+            )
+    return status, response
+
+
 # Global list to collect output for file writing
 output_lines = []
 
@@ -75,10 +106,11 @@ def get_workflow_runs(org_name, repo_name, workflow_id, date_filter):
 
     while more_results:
         # repos/{org}}/{repo name}/actions/workflows/{workflow id}/runs
-        gh_status, workflow_runs = (
-            github_handle.repos[org_name][repo_name]
+        gh_status, workflow_runs = api_call_with_retry(
+            lambda p=page_to_get: github_handle.repos[org_name][repo_name]
             .actions.workflows[workflow_id]
-            .runs.get(created=date_filter, page=page_to_get)
+            .runs.get(created=date_filter, page=p),
+            description="workflow runs for {}/{}".format(org_name, repo_name),
         )
 
         # Check for rate limiting
@@ -208,7 +240,10 @@ if __name__ == "__main__":
 
     # Get all the repos in the org
     # /orgs/{org}/repos
-    gh_status, repo_data = github_handle.orgs[args.org_name].repos.get()
+    gh_status, repo_data = api_call_with_retry(
+        lambda: github_handle.orgs[args.org_name].repos.get(),
+        description="repos for {}".format(args.org_name),
+    )
 
     if is_rate_limited(gh_status, repo_data):
         print(
@@ -228,9 +263,12 @@ if __name__ == "__main__":
 
         # Now for each repo, see if we have a deployment workflow matching the pattern
         # /repos/{org}/{repo name}/actions/workflows
-        gh_status, workflow_data = github_handle.repos[args.org_name][
-            repo_name
-        ].actions.workflows.get()
+        gh_status, workflow_data = api_call_with_retry(
+            lambda r=repo_name: github_handle.repos[args.org_name][
+                r
+            ].actions.workflows.get(),
+            description="workflows for {}".format(repo_name),
+        )
 
         if is_rate_limited(gh_status, workflow_data):
             print(
@@ -352,10 +390,15 @@ if __name__ == "__main__":
 
                         # How long did this run run for
                         # repos/{org}/{repo}/actions/runs/{run id}/timing
-                        gh_status, workflow_durations = (
-                            github_handle.repos[args.org_name][repo_name]
-                            .actions.runs[job_id]
-                            .timing.get()
+                        gh_status, workflow_durations = api_call_with_retry(
+                            lambda j=job_id, r=repo_name: github_handle.repos[
+                                args.org_name
+                            ][r]
+                            .actions.runs[j]
+                            .timing.get(),
+                            description="timing for run {} in {}".format(
+                                job_id, repo_name
+                            ),
                         )
 
                         if is_rate_limited(gh_status, workflow_durations):
