@@ -70,7 +70,7 @@ def api_call_with_retry(api_func, description="API call"):
             return status, response
         if attempt < MAX_RETRIES:
             wait = RETRY_BACKOFF_BASE ** (attempt + 1)
-            logging.warning(
+            logging.debug(
                 "Transient HTTP {} for {} — retrying in {}s (attempt {}/{})".format(
                     status, description, wait, attempt + 1, MAX_RETRIES
                 )
